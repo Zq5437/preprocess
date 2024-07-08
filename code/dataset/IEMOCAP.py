@@ -4,13 +4,20 @@ import method
 import os
 from tqdm import tqdm
 import gc
+import configparser
+
+# get the config for the IEMOCAP
+config = configparser.ConfigParser()
+
+# Attention!!! this path is based on the root path of "code", which means that you have to start the code from the root path of "code"
+config.read("../config/IEMOCAP.ini")
 
 answer_format = "This '%s' is from a '%s' person, expressing '%s' emotion by  saying '%s'."
 
 
 video_ids, video_speakers, video_labels, video_text, \
 video_audio, video_visual, video_sentence, trainVids, \
-test_vids = pkl.load(open('/home/disk1/Zq/dataset/IEMOCAP/pkl/IEMOCAP_features_raw.pkl', 'rb'), encoding='latin1')
+test_vids = pkl.load(open(config['dataset']['pickle_path'], 'rb'), encoding='latin1')
 
 emo_dict = {0:'happy', 1:'sad', 2:'neutral', 3:'angry', 4:'excited', 5:'frustrated'}
 
