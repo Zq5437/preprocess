@@ -188,9 +188,9 @@ def save_npz(info, method_name, config):
 def run(config, method_name):
     info, train_info, test_info = get_file_name(config)
     
-    # get_json(train_info, method_name, config, 'tra')
-    # get_json(test_info, method_name, config, 'evl')
-    # get_json(test_info, method_name, config, 'tra', 'append')
+    get_json(train_info, method_name, config, 'tra')
+    get_json(test_info, method_name, config, 'evl')
+    get_json(test_info, method_name, config, 'tra', 'append')
     
     # process(info, method_name, config)
     
