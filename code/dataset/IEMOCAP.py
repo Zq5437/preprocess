@@ -5,6 +5,8 @@ import os
 from tqdm import tqdm
 import gc
 import configparser
+import numpy as np
+from PIL import Image
 
 # get the config for the IEMOCAP
 config = configparser.ConfigParser()
@@ -143,15 +145,55 @@ def get_json(info, method_name, config, kind, pattern='reopen'):
     gc.collect()
     
     pass
+
+def save_npz(info, method_name, config):
+    npz_prefix = config['result']['npz_prefix'] + method_name + '/'
+    os.makedirs(npz_prefix, exist_ok=True)
     
+    save_path_prefix = config['result']['result_prefix'] + method_name + '/'
+    
+    if os.path.isfile(npz_prefix + f'IEMOCAP_{method_name}.npz'):
+        print(f'IEMOCAP_{method_name}.npz exists! please delete it if you want to generate the new npz')
+        return
+    
+    data_list = []
+    
+    with tqdm(total=len(info)) as pbar:
+        for item in info:
+            file_name, name, label, sent, gen_label = item
+            pbar.set_description(f"Processing {name}")
+            
+            save_path = save_path_prefix + name + '.png'
+            
+            if os.path.isfile(save_path):
+                img = Image.open(save_path).convert('RGB')
+                img = np.array(img)
+                
+                data = {
+                    'name': name,
+                    'label': label,
+                    'sent': sent,
+                    'img': img,
+                    'gen_label': gen_label,
+                }
+            
+                data_list.append(data)
+            
+            pbar.update(1)
+    
+    np.savez_compressed(npz_prefix + f'IEMOCAP_{method_name}.npz', data_list=data_list)
+    print(f'successfully saved IEMOCAP_{method_name}.npz!')
+    pass
     
 def run(config, method_name):
     info, train_info, test_info = get_file_name(config)
     
-    get_json(train_info, method_name, config, 'tra')
-    get_json(test_info, method_name, config, 'evl')
-    get_json(test_info, method_name, config, 'tra', 'append')
+    # get_json(train_info, method_name, config, 'tra')
+    # get_json(test_info, method_name, config, 'evl')
+    # get_json(test_info, method_name, config, 'tra', 'append')
     
-    process(info, method_name, config)
+    # process(info, method_name, config)
+    
+    save_npz(info, method_name, config)
     
     pass
