@@ -41,3 +41,5 @@ Here are some hints to help you:
 '''
 gaf_answer_format_MELD = "This GAF is expressing '%s' emotion by saying '%s'."
 gaf_answer_format_IEMOCAP = "This GAF is from a '%s' person, expressing '%s' emotion by  saying '%s'."
+gaf_answer_format_MSP = "[%s][%s]"
+gaf_answer_format_EMORY = "This GAF is expressing '%s' emotion by saying '%s'."

@@ -3,13 +3,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import warnings
 import gc
+from pyts.image import MarkovTransitionField
 
 # 忽略特定类型的警告
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+x = MarkovTransitionField(image_size=128)
 
-def generate_markov_transition_field(file_name, name, save_path_prefix):
+def mtf(file_name, name, save_path_prefix):
     """
     Generate a Markov Transition Field (MTF) from given data in a file and save it as an image.
 
@@ -22,34 +24,15 @@ def generate_markov_transition_field(file_name, name, save_path_prefix):
     None
     """
     
-    # Load the data
-    with open(file_name, 'r') as file:
-        data = list(map(int, file.read().strip().split(',')))
+    y, sr=librosa.load(file_name)
+    step = 100
+    y = y[::step]
+    y = y.reshape(1, -1)
+    y = x.fit_transform(y)
     
-    n_states = 6  # The number of unique states
-    
-    # Initialize the transition matrix with zeros
-    transition_matrix = np.zeros((n_states, n_states))
-    
-    # Populate the transition matrix
-    for (i, j) in zip(data[:-1], data[1:]):
-        transition_matrix[i, j] += 1
-    
-    # Normalize the matrix to get probabilities
-    transition_matrix = transition_matrix / transition_matrix.sum(axis=1, keepdims=True)
-    
-    # Create the Markov Transition Field (MTF)
-    mtf = np.zeros((len(data), len(data)))
-    
-    for i in range(len(data)):
-        for j in range(len(data)):
-            mtf[i, j] = transition_matrix[data[i], data[j]]
-    
-    # Plot the MTF
     plt.axis('off')
-    plt.imshow(mtf, cmap='hot', interpolation='nearest')
-    plt.colorbar()
-    plt.savefig(save_path_prefix + name + '.png', bbox_inches='tight', pad_inches=0)
+    plt.imshow(y[0], cmap='jet')
+    plt.savefig(save_path_prefix + name[:-4] + '.png', bbox_inches='tight', pad_inches=0)
     plt.close()
     
     return
@@ -69,8 +52,7 @@ Here are some hints to help you:
 '''
 mtf_answer_format_MELD = "This MTF is expressing '%s' emotion by saying '%s'."
 mtf_answer_format_IEMOCAP = "This MTF is from a '%s' person, expressing '%s' emotion by saying '%s'."
-
-
-
+mtf_answer_format_MSP = "[%s][%s]"
+mtf_answer_format_EMORY = "This mel-spectrogram is expressing '%s' emotion by saying '%s'."
 
 

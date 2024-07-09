@@ -11,10 +11,6 @@ from torchvision import transforms
 import torch
 import numpy as np
 
-## Attention on test dataset
-# 1. the dia38_utt4.mp4 did not been cut correctly and is too large to deal with , so I cut it manually, may be in other computer , the program will be killed
-# 2. the dia220_utt0.mp4 , dia220_utt1.mp4 is not consistent with the content of the csv file, so I just skip them 
-
 def func(dataset_path, csv, skip_info=None):
     """get the info of the dataset
 
@@ -31,7 +27,7 @@ def func(dataset_path, csv, skip_info=None):
         list_of_dict = list(dict_reader)  
         
         for d in list_of_dict:
-            wav_id = 'dia%s_utt%s.mp4'%(d['Dialogue_ID'], d['Utterance_ID'])
+            wav_id = 'sea%s_ep%s_sc%s_utt%s.mp4'%(d['Season'], d['Episode'], d['Scene_ID'], d['Utterance_ID'])
             
             if skip_info is not None and wav_id in skip_info:
                 # print("skip wav:", wav_id)
@@ -59,7 +55,7 @@ def get_file_name(config):
     dev_csv = config['csv']['dev_csv']
     
     train_info = func(train_dataset_path, train_csv)
-    test_info = func(test_dataset_path, test_csv, ['dia220_utt0.mp4', 'dia220_utt1.mp4'])
+    test_info = func(test_dataset_path, test_csv)
     dev_info = func(dev_dataset_path, dev_csv)
     return train_info, test_info, dev_info
 
@@ -95,7 +91,7 @@ def process(info, method_name, config, kind):
 
 def get_json(info, method_name, config, kind, pattern='reopen'):
     prompt_text = getattr(method, method_name + '_prompt_text')
-    answer_format = getattr(method, method_name + '_answer_format_MELD')
+    answer_format = getattr(method, method_name + '_answer_format_EMORY')
     save_path_prefix = config['result']['result_prefix'] + method_name + '/' + kind + '/'
     json_prefix = config['json']['json_prefix'] + method_name + '/'
     jsn_data = []
@@ -153,8 +149,8 @@ def save_npz(info, method_name, config, kind):
     
     save_path_prefix = config['result']['result_prefix'] + method_name + '/' + kind + '/'
     
-    if os.path.isfile(npz_prefix + f'MELD_{method_name}_{kind}.npz'):
-        print(f'MELD_{method_name}_{kind}.npz exists! please delete it if you want to generate the new npz')
+    if os.path.isfile(npz_prefix + f'MSP_{method_name}_{kind}.npz'):
+        print(f'MSP_{method_name}_{kind}.npz exists! please delete it if you want to generate the new npz')
         return
     
     data_list = []
@@ -182,8 +178,8 @@ def save_npz(info, method_name, config, kind):
                 
             pbar.update(1)
     
-    np.savez_compressed(npz_prefix + f'MELD_{method_name}_{kind}.npz', data_list=data_list)
-    print(f'successfully saved MELD_{method_name}_{kind}.npz!')
+    np.savez_compressed(npz_prefix + f'EMORY_{method_name}_{kind}.npz', data_list=data_list)
+    print(f'successfully saved EMORY_{method_name}_{kind}.npz!')
 
 def run(config, method_name):
     train_info, test_info, dev_info = get_file_name(config)

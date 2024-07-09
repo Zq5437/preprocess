@@ -58,3 +58,5 @@ Here are some hints to help you:
 '''
 mel_answer_format_MELD = "This mel-spectrogram is expressing '%s' emotion by saying '%s'."
 mel_answer_format_IEMOCAP = "This mel-spectrogram is from a '%s' person, expressing '%s' emotion by  saying '%s'."
+mel_answer_format_MSP = "[%s][%s]"
+mel_answer_format_EMORY = "This mel-spectrogram is expressing '%s' emotion by saying '%s'."

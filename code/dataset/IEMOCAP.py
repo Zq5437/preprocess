@@ -14,7 +14,7 @@ config = configparser.ConfigParser()
 # Attention!!! this path is based on the root path of "code", which means that you have to start the code from the root path of "code"
 config.read("../config/IEMOCAP.ini")
 
-answer_format = "This '%s' is from a '%s' person, expressing '%s' emotion by  saying '%s'."
+# answer_format = "This '%s' is from a '%s' person, expressing '%s' emotion by  saying '%s'."
 
 
 video_ids, video_speakers, video_labels, video_text, \
@@ -94,7 +94,7 @@ def process(info, method_name, config):
                 print(e)
                 continue
             finally:
-                del file_name, name, label, sent
+                del file_name, name, label, sent, gen_label
             
             if pbar.n % 100 == 0:
                 gc.collect()
@@ -143,8 +143,7 @@ def get_json(info, method_name, config, kind, pattern='reopen'):
     
     del jsn_data, prompt_text, answer_format, save_path_prefix, json_prefix, json_name
     gc.collect()
-    
-    pass
+
 
 def save_npz(info, method_name, config):
     npz_prefix = config['result']['npz_prefix'] + method_name + '/'
