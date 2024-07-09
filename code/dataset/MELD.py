@@ -5,6 +5,11 @@ from tqdm import tqdm, trange
 import gc
 import importlib
 import json
+import pickle as pkl
+from PIL import Image
+from torchvision import transforms
+import torch
+import numpy as np
 
 ## Attention on test dataset
 # 1. the dia38_utt4.mp4 did not been cut correctly and is too large to deal with , so I cut it manually, may be in other computer , the program will be killed
@@ -130,16 +135,71 @@ def get_json(info, method_name, config, kind, pattern='reopen'):
     del jsn_data, prompt_text, answer_format, save_path_prefix, json_prefix, json_name
     gc.collect()
 
+def save_npz(info, method_name, config, kind):
+    """save the result as a npz file, which consists of name, label, sent and img
+    name  : just the mp4 name
+    label : the label of the emtion
+    sent  : the word sentence
+    img   : the image of the video, saved as narray
+
+    Args:
+        info (list): train/test/dev info
+        method_name (str): method name
+        config (_type_): config info
+        kind (str): train/test/dev
+    """
+    npz_prefix = config['result']['npz_prefix'] + method_name + '/' + kind + '/'
+    os.makedirs(npz_prefix, exist_ok=True)
+    
+    save_path_prefix = config['result']['result_prefix'] + method_name + '/' + kind + '/'
+    
+    if os.path.isfile(npz_prefix + f'MELD_{method_name}_{kind}.npz'):
+        print(f'MELD_{method_name}_{kind}.npz exists! please delete it if you want to generate the new npz')
+        return
+    
+    data_list = []
+    
+    with tqdm(total=len(info)) as pbar:
+        for item in info:
+            file_name, name, label, sent = item
+            pbar.set_description(f"Processing {kind}: {name}")
+            
+            save_path = save_path_prefix + name[:-4] + '.png'
+            
+            if os.path.isfile(save_path):
+                img = Image.open(save_path).convert("RGB")
+                # img = transforms.ToTensor()(img)
+                img = np.array(img)
+                
+                data = {
+                    'name': name,
+                    'label': label,
+                    'sent': sent,
+                    'img': img
+                }
+                
+                data_list.append(data)
+                
+            pbar.update(1)
+    
+    np.savez_compressed(npz_prefix + f'MELD_{method_name}_{kind}.npz', data_list=data_list)
+    print(f'successfully saved MELD_{method_name}_{kind}.npz!')
+
 def run(config, method_name):
     train_info, test_info, dev_info = get_file_name(config)
     
-    get_json(train_info, method_name, config, 'tra')
-    get_json(test_info, method_name, config, 'evl')
-    get_json(dev_info, method_name, config, 'tra', 'append')
+    # get_json(train_info, method_name, config, 'tra')
+    # get_json(test_info, method_name, config, 'evl')
+    # get_json(dev_info, method_name, config, 'tra', 'append')
     
-    process(train_info, method_name, config, 'train')
-    process(test_info,method_name, config, 'test')
-    process(dev_info, method_name, config, 'dev')
+    # process(train_info, method_name, config, 'train')
+    # process(test_info,method_name, config, 'test')
+    # process(dev_info, method_name, config, 'dev')
+    
+    save_npz(train_info, method_name, config, 'train')
+    save_npz(test_info, method_name, config, 'test')
+    save_npz(dev_info, method_name, config, 'dev')
+    
     
     
     pass
