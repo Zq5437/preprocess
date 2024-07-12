@@ -5,11 +5,9 @@ import warnings
 import gc
 from scipy.interpolate import interp1d
 
-
 # 忽略特定类型的警告
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
-
 
 def mel2(file_name, name, save_path_prefix):
     max_frequency = 4000
@@ -32,14 +30,16 @@ def mel2(file_name, name, save_path_prefix):
     # 对每一行进行插值，使其宽度固定为fixed_width
     interpolated_spec = np.zeros((fft_spec_magnitude.shape[0], max_freq_size))
     for i in range(fft_spec_magnitude.shape[0]):
-        interp_func = interp1d(np.linspace(0, 1, fft_spec_magnitude.shape[1]), fft_spec_magnitude[i, :], kind='linear')
-        interpolated_spec[i, :] = interp_func(np.linspace(0, 1, max_freq_size))
+        valid_indices = np.isfinite(fft_spec_magnitude[i, :])
+        if np.sum(valid_indices) > 1:  # 确保有足够的有效点进行插值
+            interp_func = interp1d(np.linspace(0, 1, np.sum(valid_indices), endpoint=False), fft_spec_magnitude[i, valid_indices], kind='linear', fill_value="extrapolate")
+            interpolated_spec[i, :] = interp_func(np.linspace(0, 1, max_freq_size, endpoint=False))
+        else:
+            interpolated_spec[i, :] = 0  # 如果没有足够的有效点，则填充为0
     
     # 保持刻度相同
     max_fft_value = np.max(interpolated_spec)
-    normalized_fft_spec = interpolated_spec / max_fft_value
-    
-    # normalized_fft_spec = normalized_fft_spec[:, ::10]
+    normalized_fft_spec = interpolated_spec / max_fft_value if max_fft_value != 0 else interpolated_spec
     
     # 计算宽高比
     melspec_height, melspec_width = normalized_fft_spec.shape
@@ -57,11 +57,9 @@ def mel2(file_name, name, save_path_prefix):
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     fig.savefig(save_path_prefix + name[:-4] + '.png', bbox_inches='tight', pad_inches=0)
-    # print('saved:', name)
     plt.close()
     
     return
-
 
 mel2_prompt_text = '''You are an expert on emotion recognition, especially based on the visualization of mel-spectrogram. This is a picture of mel-spectrogram, and plus, we Perform Fourier transform on the time dimension.
 We will provide 1 image of mel-spectrogram. Please recognize the emotion from the following categories:['happy','sad','neutral','angry','excited','frustrated'].

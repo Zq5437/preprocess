@@ -72,34 +72,98 @@ def get_file_name(config):
     
     return info, train_info, test_info
 
-def process(info, method_name, config):
-    method_func = getattr(method, method_name)
+# def process(info, method_name, config):
+#     method_func = getattr(method, method_name)
     
-    # make sure the result prefix exists
-    save_path_prefix = config['result']['result_prefix'] + method_name + '/'
+#     # make sure the result prefix exists
+#     save_path_prefix = config['result']['result_prefix'] + method_name + '/'
+#     os.makedirs(save_path_prefix, exist_ok=True)
+    
+    
+#     # generate the result
+#     with tqdm(total=len(info)) as pbar:
+#         for item in info:
+#             file_name, name, label, sent, gen_label = item
+#             # print(name)
+#             pbar.set_description(f"Processing {name}")
+#             try:
+#                 method_func(file_name, name + ".wav", save_path_prefix)
+#             except MemoryError as me:
+#                 print(f"MemoryError: {me}")
+#             except Exception as e:
+#                 print(e)
+#                 continue
+#             finally:
+#                 del file_name, name, label, sent, gen_label
+            
+#             if pbar.n % 100 == 0:
+#                 gc.collect()
+
+#             pbar.update(1)
+
+
+
+
+
+
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import psutil  # 用于监控系统资源
+
+def process_item(item, method_name, save_path_prefix):
+    method_func = getattr(method, method_name)
+    file_name, name, label, sent, gen_label = item
+    try:
+        method_func(file_name, name + ".wav", save_path_prefix)
+        return True, None, item
+    except MemoryError as me:
+        return False, f"MemoryError: {me}", item
+    except Exception as e:
+        return False, f"Exception: {e}", item
+    finally:
+        del file_name, name, label, sent, gen_label
+
+def process(info, method_name, config, kind, max_workers=16):
+    save_path_prefix = config['result']['result_prefix'] + method_name + '/' + kind + '/'
     os.makedirs(save_path_prefix, exist_ok=True)
     
-    
-    # generate the result
-    with tqdm(total=len(info)) as pbar:
-        for item in info:
-            file_name, name, label, sent, gen_label = item
-            # print(name)
-            pbar.set_description(f"Processing {name}")
-            try:
-                method_func(file_name, name + ".wav", save_path_prefix)
-            except MemoryError as me:
-                print(f"MemoryError: {me}")
-            except Exception as e:
-                print(e)
-                continue
-            finally:
-                del file_name, name, label, sent, gen_label
-            
-            if pbar.n % 100 == 0:
-                gc.collect()
+    results = []
+    total_tasks = len(info)
+    with tqdm(total=total_tasks) as pbar:
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(process_item, item, method_name, save_path_prefix): item for item in info}
+            for future in as_completed(futures):
+                result, error, item = future.result()
+                if result:
+                    pbar.update(1)
+                else:
+                    results.append((item, error))
+                
+                # 内存管理
+                if pbar.n % 100 == 0:
+                    gc.collect()
+                    
+                    # 动态监控系统资源
+                    mem = psutil.virtual_memory()
+                    if mem.percent > 80:  # 当内存使用超过80%时，减少并发进程数量
+                        max_workers = max(1, max_workers - 1)
+                    elif mem.percent < 50:  # 当内存使用低于50%时，增加并发进程数量
+                        max_workers += 1
 
-            pbar.update(1)
+                    # 重新配置 ProcessPoolExecutor 的 max_workers
+                    executor._max_workers = max_workers
+
+    if results:
+        print("以下项目未能成功处理:")
+        for item, error in results:
+            file_name, name, _, _, _ = item
+            print(f"{name} (file: {file_name}) - Error: {error}")
+
+
+
+
+
+
+
 
 
 def get_json(info, method_name, config, kind, pattern='reopen'):
@@ -145,14 +209,14 @@ def get_json(info, method_name, config, kind, pattern='reopen'):
     gc.collect()
 
 
-def save_npz(info, method_name, config):
-    npz_prefix = config['result']['npz_prefix'] + method_name + '/'
+def save_npz(info, method_name, config, kind):
+    npz_prefix = config['result']['npz_prefix'] + method_name + '/' + kind + '/'
     os.makedirs(npz_prefix, exist_ok=True)
     
-    save_path_prefix = config['result']['result_prefix'] + method_name + '/'
+    save_path_prefix = config['result']['result_prefix'] + method_name + '/' + kind + '/'
     
-    if os.path.isfile(npz_prefix + f'IEMOCAP_{method_name}.npz'):
-        print(f'IEMOCAP_{method_name}.npz exists! please delete it if you want to generate the new npz')
+    if os.path.isfile(npz_prefix + f'IEMOCAP_{method_name}_{kind}.npz'):
+        print(f'IEMOCAP_{method_name}_{kind}.npz exists! please delete it if you want to generate the new npz')
         return
     
     data_list = []
@@ -160,7 +224,7 @@ def save_npz(info, method_name, config):
     with tqdm(total=len(info)) as pbar:
         for item in info:
             file_name, name, label, sent, gen_label = item
-            pbar.set_description(f"Processing {name}")
+            pbar.set_description(f"Processing {kind}: {name}")
             
             save_path = save_path_prefix + name + '.png'
             
@@ -180,8 +244,8 @@ def save_npz(info, method_name, config):
             
             pbar.update(1)
     
-    np.savez_compressed(npz_prefix + f'IEMOCAP_{method_name}.npz', data_list=data_list)
-    print(f'successfully saved IEMOCAP_{method_name}.npz!')
+    np.savez_compressed(npz_prefix + f'IEMOCAP_{method_name}_{kind}.npz', data_list=data_list)
+    print(f'successfully saved IEMOCAP_{method_name}_{kind}.npz!')
     pass
     
 def run(config, method_name):
@@ -192,7 +256,12 @@ def run(config, method_name):
     get_json(test_info, method_name, config, 'tra', 'append')
     
     # process(info, method_name, config)
+    # save_npz(info, method_name, config)
     
-    save_npz(info, method_name, config)
+    process(train_info, method_name, config, 'train')
+    process(test_info, method_name, config, 'test')
+    
+    save_npz(train_info, method_name, config, 'train')
+    save_npz(test_info, method_name, config, 'test')
     
     pass

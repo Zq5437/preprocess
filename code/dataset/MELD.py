@@ -63,34 +63,95 @@ def get_file_name(config):
     dev_info = func(dev_dataset_path, dev_csv)
     return train_info, test_info, dev_info
 
-def process(info, method_name, config, kind):
-    method_func = getattr(method, method_name)
+# def process(info, method_name, config, kind):
+#     method_func = getattr(method, method_name)
     
-    # make sure the result prefix exists
+#     # make sure the result prefix exists
+#     save_path_prefix = config['result']['result_prefix'] + method_name + '/' + kind + '/'
+#     os.makedirs(save_path_prefix, exist_ok=True)
+    
+    
+#     # generate the result
+#     with tqdm(total=len(info)) as pbar:
+#         for item in info:
+#             file_name, name, label, sent = item
+#             # print(name)
+#             pbar.set_description(f"Processing {kind}: {name}")
+#             try:
+#                 method_func(file_name, name, save_path_prefix)
+#             except MemoryError as me:
+#                 print(f"MemoryError: {me}")
+#             except Exception as e:
+#                 # print(e)
+#                 continue
+#             finally:
+#                 del file_name, name, label, sent
+            
+#             if pbar.n % 100 == 0:
+#                 gc.collect()
+
+#             pbar.update(1)
+
+
+
+# 多进程加速
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import psutil  # 用于监控系统资源
+
+def process_item(item, method_name, save_path_prefix):
+    method_func = getattr(method, method_name)
+    file_name, name, label, sent = item
+    try:
+        method_func(file_name, name, save_path_prefix)
+        return True, None
+    except MemoryError as me:
+        return False, f"MemoryError: {me}"
+    except Exception as e:
+        return False, f"Exception: {e}"
+    finally:
+        del file_name, name, label, sent
+
+def process(info, method_name, config, kind, max_workers=16):
     save_path_prefix = config['result']['result_prefix'] + method_name + '/' + kind + '/'
     os.makedirs(save_path_prefix, exist_ok=True)
     
-    
-    # generate the result
+    results = []
     with tqdm(total=len(info)) as pbar:
-        for item in info:
-            file_name, name, label, sent = item
-            # print(name)
-            pbar.set_description(f"Processing {kind}: {name}")
-            try:
-                method_func(file_name, name, save_path_prefix)
-            except MemoryError as me:
-                print(f"MemoryError: {me}")
-            except Exception as e:
-                # print(e)
-                continue
-            finally:
-                del file_name, name, label, sent
-            
-            if pbar.n % 100 == 0:
-                gc.collect()
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(process_item, item, method_name, save_path_prefix): item for item in info}
+            for future in as_completed(futures):
+                result, error = future.result()
+                if result:
+                    pbar.update(1)
+                else:
+                    results.append((futures[future], error))
+                
+                # 内存管理
+                if pbar.n % 100 == 0:
+                    gc.collect()
 
-            pbar.update(1)
+                # 动态监控系统资源
+                mem = psutil.virtual_memory()
+                if mem.percent > 80:  # 当内存使用超过80%时，减少并发进程数量
+                    max_workers = max(1, max_workers - 1)
+                elif mem.percent < 50:  # 当内存使用低于50%时，增加并发进程数量
+                    max_workers += 1
+
+                # 重新配置 ProcessPoolExecutor 的 max_workers
+                executor._max_workers = max_workers
+
+    if results:
+        print("以下项目未能成功处理:")
+        for item, error in results:
+            file_name, name, _, _ = item
+            print(f"{name} (file: {file_name}) - Error: {error}")
+
+
+
+
+
+
+
 
 
 def get_json(info, method_name, config, kind, pattern='reopen'):

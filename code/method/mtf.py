@@ -9,7 +9,9 @@ from pyts.image import MarkovTransitionField
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-x = MarkovTransitionField(image_size=128)
+image_size = 128
+
+x = MarkovTransitionField(image_size=image_size)
 
 def mtf(file_name, name, save_path_prefix):
     """
@@ -27,14 +29,19 @@ def mtf(file_name, name, save_path_prefix):
     y, sr=librosa.load(file_name)
     step = 100
     y = y[::step]
+    
+    tool = x
+    if len(y) < image_size:
+        tool = MarkovTransitionField(image_size=len(y))
     y = y.reshape(1, -1)
-    y = x.fit_transform(y)
+    y = tool.fit_transform(y)
     
     plt.axis('off')
     plt.imshow(y[0], cmap='jet')
     plt.savefig(save_path_prefix + name[:-4] + '.png', bbox_inches='tight', pad_inches=0)
     plt.close()
     
+    del y, sr, step, tool
     return
 
 
