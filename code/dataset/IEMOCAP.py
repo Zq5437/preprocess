@@ -182,7 +182,7 @@ def get_json(info, method_name, config, kind, pattern='reopen'):
             file_name, name, label, sent, gen_label = item
             try:
                 answer = answer_format%(gen_label, label, sent)
-                jsn_data.append({"img":save_path_prefix + name + '.png', "prompt":prompt_text, "label":answer})
+                jsn_data.append({"img": f'./fts/IEMOCAP/{method_name}/' + name + '.png', "prompt":"", "label":label + ";" + gen_label})
             except Exception as e:
                 continue
             finally:
@@ -229,7 +229,10 @@ def save_npz(info, method_name, config, kind):
             save_path = save_path_prefix + name + '.png'
             
             if os.path.isfile(save_path):
-                img = Image.open(save_path).convert('RGB')
+                # 当前读入的是RGB图像时
+                # img = Image.open(save_path).convert('RGB')
+                # 当前读入的时灰度图像时
+                img = Image.open(save_path)
                 img = np.array(img)
                 
                 data = {
@@ -241,7 +244,6 @@ def save_npz(info, method_name, config, kind):
                 }
             
                 data_list.append(data)
-            
             pbar.update(1)
     
     np.savez_compressed(npz_prefix + f'IEMOCAP_{method_name}_{kind}.npz', data_list=data_list)

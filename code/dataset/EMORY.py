@@ -167,7 +167,7 @@ def get_json(info, method_name, config, kind, pattern='reopen'):
             file_name, name, label, sent = item
             try:
                 answer = answer_format%(label, sent)
-                jsn_data.append({"img":save_path_prefix + name[:-4] + '.png', "prompt":prompt_text, "label":answer})
+                jsn_data.append({"img": f'./fts/EMORY/{method_name}/' + name[:-4] + '.png', "prompt":"", "label":label + ";"})
             except Exception as e:
                 continue
             finally:
@@ -250,13 +250,13 @@ def run(config, method_name):
     get_json(test_info, method_name, config, 'evl')
     get_json(dev_info, method_name, config, 'tra', 'append')
     
-    process(train_info, method_name, config, 'train')
-    process(test_info,method_name, config, 'test')
-    process(dev_info, method_name, config, 'dev')
+    # process(train_info, method_name, config, 'train')
+    # process(test_info,method_name, config, 'test')
+    # process(dev_info, method_name, config, 'dev')
     
-    save_npz(train_info, method_name, config, 'train')
-    save_npz(test_info, method_name, config, 'test')
-    save_npz(dev_info, method_name, config, 'dev')
+    # save_npz(train_info, method_name, config, 'train')
+    # save_npz(test_info, method_name, config, 'test')
+    # save_npz(dev_info, method_name, config, 'dev')
     
     
     

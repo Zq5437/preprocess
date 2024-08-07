@@ -25,44 +25,29 @@ def mel(file_name, name, save_path_prefix):
         y = np.concatenate(non_silent_segments)  # 只保留非静音部分
 
         # 计算梅尔频谱图
-        mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, fmax=16000, n_mels=128)
-        # S_dB = librosa.power_to_db(mel_spec, ref=np.max)
-        S_dB = librosa.power_to_db(mel_spec, ref=1.0)
-        # print(S_dB)
+        mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, fmax=8000)
+        S_dB = librosa.power_to_db(mel_spec, ref=np.max)
         
-        
-        # origin:
-        # # 标准化为16位整数图像
-        # S_dB_shifted = S_dB - S_dB.min()
-        # # S_dB_normalized = (S_dB_shifted / S_dB_shifted.max() * 65535).astype(np.uint16)
-        # # S_dB_normalized = (S_dB_shifted / S_dB_shifted.max() * 256).astype(np.uint8)
-
-        # S_dB_normalized = (S_dB_shifted / S_dB_shifted.max() * 256).astype(np.uint8)
-        
-        # now:
-        # print(S_dB.min())
-        # print(S_dB.max())
-        # 标准化为整数图像
-        S_dB_shifted = S_dB + 100
-        # print(S_dB_shifted)
-        S_dB_normalized = (S_dB_shifted / 150 * 256).astype(np.uint8)
-        # print(S_dB_normalized)
-        
+        # 标准化为16位整数图像
+        S_dB_shifted = S_dB - S_dB.min()
+        # S_dB_normalized = (S_dB_shifted / S_dB_shifted.max() * 65535).astype(np.uint16)
+        S_dB_normalized = (S_dB_shifted / S_dB_shifted.max() * 256).astype(np.uint8)
         
         # 上下翻转图像
         S_dB_flipped = np.flipud(S_dB_normalized)
         
-        # # 过滤
-        # for i in range(len(S_dB_flipped)):
-        #     for j in range(len(S_dB_flipped[i])):
-        #         # print(S_dB_flipped[i][j])
-        #         if S_dB_flipped[i][j] < 100:
-        #             S_dB_flipped[i][j] = 100
+        # 过滤
+        for i in range(len(S_dB_flipped)):
+            for j in range(len(S_dB_flipped[i])):
+                # print(S_dB_flipped[i][j])
+                if S_dB_flipped[i][j] < 100:
+                    S_dB_flipped[i][j] = 100
         
         # 使用 PIL 保存为16位PNG图像
         save_path = save_path_prefix + name[0:-4] + '.png'
         
-        plt.imsave(save_path, S_dB_flipped, cmap='jet', vmin=0, vmax=255)
+        plt.imsave(save_path, S_dB_flipped, cmap='jet')
+        # plt.imsave(save_path, S_dB_flipped, cmap='magma')
         # img = Image.fromarray(S_dB_flipped, 'RGB')
         # img.save(save_path, format='PNG')
         

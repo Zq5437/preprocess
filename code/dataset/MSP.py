@@ -176,7 +176,7 @@ def get_json(info, method_name, config, kind, pattern='reopen'):
             file_name, name, label, sent, gen_label = item
             try:
                 answer = answer_format%(emo_dict[label], gen_label)
-                jsn_data.append({"img":save_path_prefix + name + '.png', "prompt":prompt_text, "label":answer})
+                jsn_data.append({"img": f'./fts/MSP/{method_name}/' + name + '.png', "prompt":"", "label":emo_dict[label] + ";" + gen_label})
             except Exception as e:
                 continue
             finally:
@@ -260,10 +260,10 @@ def run(config, method_name):
     get_json(train_info, method_name, config, 'tra')
     get_json(test_info, method_name, config, 'evl')
     
-    process(train_info, method_name, config, 'train')
-    process(test_info, method_name, config, 'test')
+    # process(train_info, method_name, config, 'train')
+    # process(test_info, method_name, config, 'test')
     
-    save_npz(train_info, method_name, config, 'train')
-    save_npz(test_info, method_name, config, 'test')
+    # save_npz(train_info, method_name, config, 'train')
+    # save_npz(test_info, method_name, config, 'test')
     
     pass

@@ -1,73 +1,55 @@
 import librosa
+import matplotlib.pyplot as plt
 import numpy as np
 import warnings
 import gc
 from PIL import Image
-import matplotlib.pyplot as plt
 
 # 忽略特定类型的警告
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+
 def mel(file_name, name, save_path_prefix):
     try:
         # 加载音频文件
         y, sr = librosa.load(file_name)
-
-        # **新增代码部分：检测非静音段**
-        non_silent_intervals = librosa.effects.split(y, top_db=20)  # 检测非静音段，top_db可以根据需要调整
-        non_silent_segments = []
         
-        for start, end in non_silent_intervals:
-            non_silent_segments.append(y[start:end])
-        
-        # 合并非静音部分
-        y = np.concatenate(non_silent_segments)  # 只保留非静音部分
-
         # 计算梅尔频谱图
-        mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, fmax=16000, n_mels=128)
-        # S_dB = librosa.power_to_db(mel_spec, ref=np.max)
-        S_dB = librosa.power_to_db(mel_spec, ref=1.0)
-        # print(S_dB)
+        mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, fmax=8000)
+        S_dB = librosa.power_to_db(mel_spec, ref=np.max)
         
-        
-        # origin:
-        # # 标准化为16位整数图像
-        # S_dB_shifted = S_dB - S_dB.min()
-        # # S_dB_normalized = (S_dB_shifted / S_dB_shifted.max() * 65535).astype(np.uint16)
-        # # S_dB_normalized = (S_dB_shifted / S_dB_shifted.max() * 256).astype(np.uint8)
-
-        # S_dB_normalized = (S_dB_shifted / S_dB_shifted.max() * 256).astype(np.uint8)
-        
-        # now:
-        # print(S_dB.min())
-        # print(S_dB.max())
-        # 标准化为整数图像
-        S_dB_shifted = S_dB + 100
-        # print(S_dB_shifted)
-        S_dB_normalized = (S_dB_shifted / 150 * 256).astype(np.uint8)
-        # print(S_dB_normalized)
-        
-        
-        # 上下翻转图像
-        S_dB_flipped = np.flipud(S_dB_normalized)
-        
-        # # 过滤
-        # for i in range(len(S_dB_flipped)):
-        #     for j in range(len(S_dB_flipped[i])):
-        #         # print(S_dB_flipped[i][j])
-        #         if S_dB_flipped[i][j] < 100:
-        #             S_dB_flipped[i][j] = 100
-        
-        # 使用 PIL 保存为16位PNG图像
+        # 使用 plt.imsave 直接保存梅尔频谱图数据为灰度图像
         save_path = save_path_prefix + name[0:-4] + '.png'
         
-        plt.imsave(save_path, S_dB_flipped, cmap='jet', vmin=0, vmax=255)
-        # img = Image.fromarray(S_dB_flipped, 'RGB')
-        # img.save(save_path, format='PNG')
+        # 标准化为8位整数图像
+        # S_dB_normalized = (S_dB - S_dB.min()) / (S_dB.max() - S_dB.min()) * 255
+        # S_dB_normalized = S_dB_normalized.astype(np.uint8)
+        
+        # 设置上下颠倒
+        # S_dB_normalized = np.flipud(S_dB_normalized)
+        
+        # 方式1 使用Image保存
+        # img = Image.fromarray(S_dB_normalized)
+        # img.save(save_path)
+        
+        # 方式2 使用plt中的热力图保存
+        plt.imsave(save_path, S_dB, cmap='hot')
+        
+        
+        # 读取保存的灰度图像并转换为二维数组
+        read_gray = Image.open(save_path)
+        read_gray_array = np.array(read_gray)
+        
+        # 比较原始梅尔频谱图数据与读取的灰度图像数据
+        difference = np.abs(S_dB - read_gray_array)
+        
+        # 打印差异
+        print("Difference between original mel spectrogram and read gray image data:")
+        print(difference)
         
         # 释放内存
-        del y, sr, mel_spec, S_dB, S_dB_normalized, S_dB_flipped
+        del y, sr, mel_spec, S_dB, read_gray, read_gray_array
     except MemoryError as me:
         print(f"MemoryError: {me}")
     except Exception as e:
@@ -76,6 +58,8 @@ def mel(file_name, name, save_path_prefix):
         gc.collect()
         
     return save_path
+
+
 
 mel_prompt_text = '''You are an expert on emotion recognition, especially based on the visualization of mel-spectrogram. 
 We will provide 1 image of mel-spectrogram. Please recognize the emotion from the following categories:['happy','sad','neutral','angry','excited','frustrated'].
@@ -89,6 +73,6 @@ Here are some hints to help you:
 7. the gender difference is also important, differences in adult F0 typically range between 80 and 175 Hz among men, and 160 and 270 Hz among women.
 '''
 mel_answer_format_MELD = "This mel-spectrogram is expressing '%s' emotion by saying '%s'."
-mel_answer_format_IEMOCAP = "This mel-spectrogram is from a '%s' person, expressing '%s' emotion by saying '%s'."
+mel_answer_format_IEMOCAP = "This mel-spectrogram is from a '%s' person, expressing '%s' emotion by  saying '%s'."
 mel_answer_format_MSP = "[%s][%s]"
 mel_answer_format_EMORY = "This mel-spectrogram is expressing '%s' emotion by saying '%s'."

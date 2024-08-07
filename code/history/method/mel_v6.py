@@ -53,11 +53,11 @@ def mel(file_name, name, save_path_prefix):
         S_dB_flipped = np.flipud(S_dB_normalized)
         
         # # 过滤
-        # for i in range(len(S_dB_flipped)):
-        #     for j in range(len(S_dB_flipped[i])):
-        #         # print(S_dB_flipped[i][j])
-        #         if S_dB_flipped[i][j] < 100:
-        #             S_dB_flipped[i][j] = 100
+        for i in range(len(S_dB_flipped)):
+            for j in range(len(S_dB_flipped[i])):
+                # print(S_dB_flipped[i][j])
+                if S_dB_flipped[i][j] < 100:
+                    S_dB_flipped[i][j] = 100
         
         # 使用 PIL 保存为16位PNG图像
         save_path = save_path_prefix + name[0:-4] + '.png'

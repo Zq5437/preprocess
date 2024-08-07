@@ -170,7 +170,7 @@ def get_json(info, method_name, config, kind, pattern='reopen'):
             file_name, name, label, sent = item
             try:
                 answer = answer_format%(label, sent)
-                jsn_data.append({"img":save_path_prefix + name[:-4] + '.png', "prompt":prompt_text, "label":answer})
+                jsn_data.append({"img": f'./fts/MELD/{method_name}/' + name[:-4] + '.png', "prompt":"", "label":label + ";"})
             except Exception as e:
                 continue
             finally:

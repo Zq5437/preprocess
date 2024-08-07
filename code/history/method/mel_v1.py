@@ -1,73 +1,40 @@
 import librosa
+import matplotlib.pyplot as plt
 import numpy as np
 import warnings
 import gc
-from PIL import Image
-import matplotlib.pyplot as plt
 
 # 忽略特定类型的警告
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+
 def mel(file_name, name, save_path_prefix):
     try:
-        # 加载音频文件
         y, sr = librosa.load(file_name)
-
-        # **新增代码部分：检测非静音段**
-        non_silent_intervals = librosa.effects.split(y, top_db=20)  # 检测非静音段，top_db可以根据需要调整
-        non_silent_segments = []
+        mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, fmax=8000)
         
-        for start, end in non_silent_intervals:
-            non_silent_segments.append(y[start:end])
+        # 计算宽高比
+        melspec_height, melspec_width = mel_spec.shape
+        aspect_ratio = melspec_width / melspec_height
         
-        # 合并非静音部分
-        y = np.concatenate(non_silent_segments)  # 只保留非静音部分
-
-        # 计算梅尔频谱图
-        mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, fmax=16000, n_mels=128)
-        # S_dB = librosa.power_to_db(mel_spec, ref=np.max)
-        S_dB = librosa.power_to_db(mel_spec, ref=1.0)
-        # print(S_dB)
+        # 设置dpi和figsize以保持宽高比
+        dpi = 100  # 使用100 dpi
+        figsize = (aspect_ratio * 4, 4)  # 保持高度为4英寸，宽度根据宽高比调整
         
+        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+        S_dB = librosa.power_to_db(mel_spec, ref=np.max)
+        img = librosa.display.specshow(S_dB, x_axis='time',
+                                    y_axis='mel', sr=sr,
+                                    fmax=8000, ax=ax)
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        fig.savefig(save_path_prefix + name[0:-4] + '.png', bbox_inches='tight', pad_inches=0)
+        # print('saved:', name)
+        plt.clf()
+        plt.close(fig)
         
-        # origin:
-        # # 标准化为16位整数图像
-        # S_dB_shifted = S_dB - S_dB.min()
-        # # S_dB_normalized = (S_dB_shifted / S_dB_shifted.max() * 65535).astype(np.uint16)
-        # # S_dB_normalized = (S_dB_shifted / S_dB_shifted.max() * 256).astype(np.uint8)
-
-        # S_dB_normalized = (S_dB_shifted / S_dB_shifted.max() * 256).astype(np.uint8)
-        
-        # now:
-        # print(S_dB.min())
-        # print(S_dB.max())
-        # 标准化为整数图像
-        S_dB_shifted = S_dB + 100
-        # print(S_dB_shifted)
-        S_dB_normalized = (S_dB_shifted / 150 * 256).astype(np.uint8)
-        # print(S_dB_normalized)
-        
-        
-        # 上下翻转图像
-        S_dB_flipped = np.flipud(S_dB_normalized)
-        
-        # # 过滤
-        # for i in range(len(S_dB_flipped)):
-        #     for j in range(len(S_dB_flipped[i])):
-        #         # print(S_dB_flipped[i][j])
-        #         if S_dB_flipped[i][j] < 100:
-        #             S_dB_flipped[i][j] = 100
-        
-        # 使用 PIL 保存为16位PNG图像
-        save_path = save_path_prefix + name[0:-4] + '.png'
-        
-        plt.imsave(save_path, S_dB_flipped, cmap='jet', vmin=0, vmax=255)
-        # img = Image.fromarray(S_dB_flipped, 'RGB')
-        # img.save(save_path, format='PNG')
-        
-        # 释放内存
-        del y, sr, mel_spec, S_dB, S_dB_normalized, S_dB_flipped
+        del y, sr, mel_spec, S_dB, fig, ax, img, figsize, dpi
     except MemoryError as me:
         print(f"MemoryError: {me}")
     except Exception as e:
@@ -75,7 +42,8 @@ def mel(file_name, name, save_path_prefix):
     finally:
         gc.collect()
         
-    return save_path
+    return save_path_prefix + name + '.png'
+
 
 mel_prompt_text = '''You are an expert on emotion recognition, especially based on the visualization of mel-spectrogram. 
 We will provide 1 image of mel-spectrogram. Please recognize the emotion from the following categories:['happy','sad','neutral','angry','excited','frustrated'].
@@ -89,6 +57,6 @@ Here are some hints to help you:
 7. the gender difference is also important, differences in adult F0 typically range between 80 and 175 Hz among men, and 160 and 270 Hz among women.
 '''
 mel_answer_format_MELD = "This mel-spectrogram is expressing '%s' emotion by saying '%s'."
-mel_answer_format_IEMOCAP = "This mel-spectrogram is from a '%s' person, expressing '%s' emotion by saying '%s'."
+mel_answer_format_IEMOCAP = "This mel-spectrogram is from a '%s' person, expressing '%s' emotion by  saying '%s'."
 mel_answer_format_MSP = "[%s][%s]"
 mel_answer_format_EMORY = "This mel-spectrogram is expressing '%s' emotion by saying '%s'."
